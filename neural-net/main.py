@@ -6,16 +6,15 @@ from sklearn.svm import SVC
 from sklearn.metrics import accuracy_score
 from PIL import Image
 import os
+import numpy as np
 
 
 class ResNetFingerprintExtractor(nn.Module):
     def __init__(self, num_devices):
         super(ResNetFingerprintExtractor, self).__init__()
         resnet = models.resnet101(pretrained=True)
-        self.resnet = nn.Sequential(
-            *list(resnet.children())[:-1]
-        )  # remove fc
-        self.fc = nn.Linear(2048, num_devices)  # FC layer for device classification
+        self.resnet = nn.Sequential(*list(resnet.children())[:-1])  # remove fc
+        self.fc = nn.Linear(2048, num_devices) # detach fc from the pipeline
 
     def forward(self, x):
         features = self.resnet(x)
@@ -75,9 +74,9 @@ def main():
     device_fingerprint_extractor = ResNetFingerprintExtractor(num_devices)
 
     optimizer = torch.optim.Adam(device_fingerprint_extractor.parameters(), lr=0.001)
-    criterion = nn.CrossEntropyLoss()
+    softmax = nn.CrossEntropyLoss()
     num_epochs = 10
-    batch_size = 32
+    batch_size = 12
     for epoch in range(num_epochs):
         for i in range(0, len(image_paths), batch_size):
             batch_images = prnu_free_images_downsampling[i : i + batch_size]
@@ -85,12 +84,12 @@ def main():
 
             optimizer.zero_grad()
             outputs = device_fingerprint_extractor(batch_images)
-            loss = criterion(outputs, batch_labels)
+            outputs = device_fingerprint_extractor.forward(outputs)
+            loss = softmax(outputs, batch_labels)
             loss.backward()
             optimizer.step()
         print(f"Epoch [{epoch+1}/{num_epochs}], Loss: {loss.item()}")
 
-    # Extract features using ResNet
     features_downsampling = (
         device_fingerprint_extractor(prnu_free_images_downsampling).detach().numpy()
     )
@@ -109,8 +108,8 @@ def main():
     accuracy_downsampling = accuracy_score(labels, predicted_labels_downsampling)
     accuracy_random = accuracy_score(labels, predicted_labels_random)
 
-    print(f"Accuracy using downsampling: {accuracy_downsampling}")
-    print(f"Accuracy using random sampling: {accuracy_random}")
+    print(f"downsampling acc: {accuracy_downsampling}")
+    print(f"random acc: {accuracy_random}")
 
 
 if __name__ == "__main__":
