@@ -14,6 +14,9 @@ from numpy.fft import fft2, ifft2
 from scipy.ndimage import filters
 from sklearn.metrics import roc_curve, auc
 from tqdm import tqdm
+import os
+from glob import glob
+from PIL import Image
 
 
 class ArgumentError(Exception):
@@ -151,7 +154,7 @@ def extract_multiple_aligned(imgs: list, levels: int = 4, sigma: float = 5, proc
         for im in imgs:
             args_list += [(im, levels, sigma)]
         pool = Pool(processes=processes)
-
+ 
         for batch_idx0 in tqdm(np.arange(start=0, step=batch_size, stop=len(imgs)), disable=tqdm_str == '',
                                desc=(tqdm_str + ' (1/2)'), dynamic_ncols=True):
             nni = pool.map(inten_sat_compact, args_list[batch_idx0:batch_idx0 + batch_size])
@@ -558,3 +561,33 @@ def gt(l1: list or np.ndarray, l2: list or np.ndarray) -> np.ndarray:
         gt_arr[l1idx, l2 == l1sample] = True
 
     return gt_arr
+
+
+# def persist_fingerprints(labels, list: list | np.ndarray):
+
+ff_dirlist = np.array(sorted(glob('test/data/ff-jpg/*.JPG')))
+ff_device = np.array([os.path.split(i)[1].rsplit('_', 1)[0] for i in ff_dirlist])
+
+def get_images_for_device(device_name: str) -> list:
+    imgs = []
+    for img_path in ff_dirlist[ff_device == device_name]:
+        im = Image.open(img_path)
+        im_arr = np.asarray(im)
+        if im_arr.dtype != np.uint8:
+            print('Error while reading image: {}'.format(img_path))
+            continue
+        if im_arr.ndim != 3:
+            print('Image is not RGB: {}'.format(img_path))
+            continue
+        im_cut = cut_ctr(im_arr, (512, 512, 3))
+        imgs += [im_cut]
+    return imgs
+
+def get_fingerprint_for_device(device_name: str) -> np.ndarray:
+    if os.path.exists(f"./fingerprints/{device_name}.npy"):
+        return np.load(f"./fingerprints/{device_name}.npy", allow_pickle=True)
+    else:
+        imgs = get_images_for_device(device_name)
+        fingerprint = extract_multiple_aligned(imgs, processes=cpu_count())
+        fingerprint.dump(f"./fingerprints/{device_name}.npy")
+        return fingerprint

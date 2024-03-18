@@ -34,19 +34,8 @@ def main():
     fingerprint_device = sorted(np.unique(ff_device))
     k = []
     for device in fingerprint_device:
-        imgs = []
-        for img_path in ff_dirlist[ff_device == device]:
-            im = Image.open(img_path)
-            im_arr = np.asarray(im)
-            if im_arr.dtype != np.uint8:
-                print('Error while reading image: {}'.format(img_path))
-                continue
-            if im_arr.ndim != 3:
-                print('Image is not RGB: {}'.format(img_path))
-                continue
-            im_cut = prnu.cut_ctr(im_arr, (512, 512, 3))
-            imgs += [im_cut]
-        k += [prnu.extract_multiple_aligned(imgs, processes=cpu_count())]
+        fingerprint = prnu.get_fingerprint_for_device(device)
+        k += [fingerprint]
 
     k = np.stack(k, 0)
 
@@ -68,6 +57,7 @@ def main():
     print('Computing cross correlation')
     cc_aligned_rot = prnu.aligned_cc(k, w)['cc']
 
+    
     print('Computing statistics cross correlation')
     stats_cc = prnu.stats(cc_aligned_rot, gt)
 
