@@ -8,6 +8,7 @@ from PIL import Image
 import os
 import numpy as np
 
+path = "./test/data/nat-jpg"
 
 class ResNetFingerprintExtractor(nn.Module):
     def __init__(self, num_devices):
@@ -34,15 +35,15 @@ def downsample_image(image_path):
 
 def generate_prnu_free_images_downsampling(image_paths):
     prnu_free_images = []
-    for path in image_paths:
-        prnu_free_images.append(downsample_image(path))
+    for imgpath in image_paths:
+        prnu_free_images.append(downsample_image(f"{path}/{imgpath}"))
     return torch.stack(prnu_free_images)
 
 
 def generate_prnu_free_images_random(image_paths):
     prnu_free_images = []
-    for path in image_paths:
-        img = Image.open(path)
+    for imgpath in image_paths:
+        img = Image.open(f"{path}/{imgpath}")
         transform = transforms.Compose(
             [transforms.RandomCrop((224, 224)), transforms.ToTensor()]
         )
@@ -58,7 +59,7 @@ def train_svm_classifier(features, labels):
 
 
 def main():
-    image_paths = os.listdir("../test/data/nat-jpg")
+    image_paths = os.listdir(path)
     labels = [
         "Nikon_D70_0",
         "Nikon_D70_1",
