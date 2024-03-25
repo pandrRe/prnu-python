@@ -562,15 +562,9 @@ def gt(l1: list or np.ndarray, l2: list or np.ndarray) -> np.ndarray:
 
     return gt_arr
 
-
-# def persist_fingerprints(labels, list: list | np.ndarray):
-
-ff_dirlist = np.array(sorted(glob('test/data/ff-jpg/*.JPG')))
-ff_device = np.array([os.path.split(i)[1].rsplit('_', 1)[0] for i in ff_dirlist])
-
-def get_images_for_device(device_name: str) -> list:
+def get_fingerprint_from_images(images: list[str], slice_size = 20):
     imgs = []
-    for img_path in ff_dirlist[ff_device == device_name]:
+    for img_path in images[:slice_size]:
         im = Image.open(img_path)
         im_arr = np.asarray(im)
         if im_arr.dtype != np.uint8:
@@ -579,15 +573,17 @@ def get_images_for_device(device_name: str) -> list:
         if im_arr.ndim != 3:
             print('Image is not RGB: {}'.format(img_path))
             continue
-        im_cut = cut_ctr(im_arr, (512, 512, 3))
+        im_cut = cut_ctr(im_arr, (224, 224, 3))
         imgs += [im_cut]
-    return imgs
+    fingerprint = extract_multiple_aligned(imgs, processes=cpu_count())
+    return fingerprint
 
-def get_fingerprint_for_device(device_name: str) -> np.ndarray:
-    if os.path.exists(f"./fingerprints/{device_name}.npy"):
-        return np.load(f"./fingerprints/{device_name}.npy", allow_pickle=True)
-    else:
-        imgs = get_images_for_device(device_name)
-        fingerprint = extract_multiple_aligned(imgs, processes=cpu_count())
-        fingerprint.dump(f"./fingerprints/{device_name}.npy")
-        return fingerprint
+
+# def get_fingerprint_for_device(device_name: str) -> np.ndarray:
+#     if os.path.exists(f"./fingerprints/{device_name}.npy"):
+#         return np.load(f"./fingerprints/{device_name}.npy", allow_pickle=True)
+#     else:
+#         imgs = get_images_for_device(device_name)
+#         fingerprint = extract_multiple_aligned(imgs, processes=cpu_count())
+#         fingerprint.dump(f"./fingerprints/{device_name}.npy")
+#         return fingerprint

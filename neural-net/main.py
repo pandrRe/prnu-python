@@ -27,6 +27,7 @@ class ResNetFingerprintExtractor(nn.Module):
 def downsample_image(image_path):
     img = Image.open(image_path)
     transform = transforms.Compose(
+        # default interpolation for the resize is bilinear
         [transforms.Resize((224, 224)), transforms.ToTensor()]
     )
     img = transform(img)
